@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "179267485570",
+    "project_id": "starshare-5e9d8",
+    "storage_bucket": "starshare-5e9d8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:179267485570:android:1bb18ba40476b3fc01599b",
+        "android_client_info": {
+          "package_name": "com.mutai.starshare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAR1gcg2ir_no7_kl0em4h5KR0eW2pvN5s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
