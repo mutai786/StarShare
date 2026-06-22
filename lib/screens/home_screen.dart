@@ -1,8 +1,90 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
+import 'package:starshare/screens/qr_generator_screen.dart';
+import 'package:starshare/screens/qr_scanner_screen.dart';
+import 'send_file_screen.dart';
+import 'receive_file_screen.dart';
+import 'history_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../services/database_service.dart';
+import '../services/app_state.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int sentCount = 0;
+  int receivedCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    loadStats();
+    AppState.updateNotifier.addListener(loadStats);
+  }
+
+  Future<void> loadStats() async {
+    final db = await DatabaseService.database;
+
+    final sent = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM transfers WHERE direction = 'Sent'",
+    );
+
+    final received = await db.rawQuery(
+      "SELECT COUNT(*) as count FROM transfers WHERE direction = 'Received'",
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      sentCount = (sent.first['count'] as int?) ?? 0;
+      receivedCount = (received.first['count'] as int?) ?? 0;
+    });
+  }
+
+  // ✅ FIXED QR HANDLING
+  void scanAndSend() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+    );
+
+    if (result == null) return;
+
+    final ip = result['ip'];
+    final port = result['port'];
+
+    if (ip == null || port == null) return;
+
+    // Save for SendFileScreen auto-connect
+    AppState.setSelectedDevice(
+      ip: ip,
+      port: port,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Connected to $ip:$port")),
+    );
+
+    // OPTIONAL: auto-open send screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SendFileScreen(),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    AppState.updateNotifier.removeListener(loadStats);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,56 +117,16 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 8),
-
-            const Text(
-              "Your files are secured with end-to-end encryption 🔐",
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
-
             const SizedBox(height: 25),
 
             Row(
               children: [
                 Expanded(
-                  child: _statCard(
-                    Icons.send,
-                    "Sent",
-                    "24",
-                  ),
+                  child: _statCard(Icons.send, "Sent", sentCount.toString()),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _statCard(
-                    Icons.download,
-                    "Received",
-                    "18",
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _statCard(
-                    Icons.storage,
-                    "Storage",
-                    "2.1 GB",
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _statCard(
-                    Icons.lock,
-                    "Secure",
-                    "Active",
-                  ),
+                  child: _statCard(Icons.download, "Received", receivedCount.toString()),
                 ),
               ],
             ),
@@ -124,96 +166,57 @@ class HomeScreen extends StatelessWidget {
                   context,
                   Icons.download,
                   "Receive",
-                      () {},
+                      () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ReceiveFileScreen(),
+                      ),
+                    );
+                  },
                 ),
 
                 _actionButton(
                   context,
                   Icons.qr_code_scanner,
-                  "QR",
-                      () {},
+                  "Scan",
+                  scanAndSend,
                 ),
 
                 _actionButton(
                   context,
-                  Icons.chat,
-                  "Chat",
-                      () {},
+                  Icons.qr_code,
+                  "Generate",
+                      () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const QrGeneratorScreen(),
+                      ),
+                    );
+                  },
                 ),
+
               ],
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
 
-            const Text(
-              "Recent Files",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            Card(
-              color: Colors.white10,
-              child: ListTile(
-                leading: Icon(
-                  Icons.picture_as_pdf,
-                  color: Colors.red,
-                ),
-                title: Text(
-                  "Project.pdf",
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: Text(
-                  "Sent 2 min ago",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                trailing: Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                ),
-              ),
-            ),
-
-            Card(
-              color: Colors.white10,
-              child: ListTile(
-                leading: Icon(
-                  Icons.image,
-                  color: Colors.blue,
-                ),
-                title: Text(
-                  "Vacation.jpg",
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: Text(
-                  "Received 1 hr ago",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                trailing: Icon(
-                  Icons.download_done,
-                  color: Colors.green,
-                ),
-              ),
+            _actionButton(
+              context,
+              Icons.history,
+              "History",
+                  () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const HistoryScreen(),
+                  ),
+                );
+              },
             ),
           ],
         ),
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.greenAccent,
-        child: const Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const SendFileScreen(),
-            ),
-          );
-        },
       ),
     );
   }
@@ -235,10 +238,7 @@ class HomeScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.grey),
-            ),
+            Text(title, style: const TextStyle(color: Colors.grey)),
           ],
         ),
       ),
@@ -262,146 +262,8 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white),
-        ),
+        Text(label, style: const TextStyle(color: Colors.white)),
       ],
-    );
-  }
-}
-
-class SendFileScreen extends StatefulWidget {
-  const SendFileScreen({super.key});
-
-  @override
-  State<SendFileScreen> createState() => _SendFileScreenState();
-}
-
-class _SendFileScreenState extends State<SendFileScreen> {
-  String? fileName;
-  bool isEncrypted = false;
-
-  void pickFile() {
-    // MOCK FILE PICK (no Firebase yet)
-    setState(() {
-      fileName = "Project.pdf";
-      isEncrypted = false;
-    });
-  }
-
-  void encryptFile() {
-    setState(() {
-      isEncrypted = true;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("File Encrypted 🔐")),
-    );
-  }
-
-  void sendFile() {
-    if (fileName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No file selected")),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("File Sent Successfully 📤")),
-    );
-
-    setState(() {
-      fileName = null;
-      isEncrypted = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-
-      appBar: AppBar(
-        title: const Text("Send File"),
-        backgroundColor: Colors.blueAccent,
-      ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            const Text(
-              "Select a file to share",
-              style: TextStyle(color: Colors.white, fontSize: 18),
-            ),
-
-            const SizedBox(height: 20),
-
-            // FILE DISPLAY CARD
-            Card(
-              color: Colors.white10,
-              child: ListTile(
-                leading: const Icon(Icons.insert_drive_file,
-                    color: Colors.greenAccent),
-                title: Text(
-                  fileName ?? "No file selected",
-                  style: const TextStyle(color: Colors.white),
-                ),
-                subtitle: Text(
-                  isEncrypted ? "Encrypted 🔐" : "Not encrypted",
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // PICK FILE BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: pickFile,
-                icon: const Icon(Icons.attach_file),
-                label: const Text("Pick File"),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // ENCRYPT BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: fileName == null ? null : encryptFile,
-                icon: const Icon(Icons.lock),
-                label: const Text("Encrypt File"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // SEND BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: fileName == null ? null : sendFile,
-                icon: const Icon(Icons.send),
-                label: const Text("Send File"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

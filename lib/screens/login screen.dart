@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'register.dart';
 import 'home_screen.dart';
 import '../user data.dart';
+import '../services/auth_service.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -13,6 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  final AuthService _authService = AuthService();
+
   @override
   void dispose() {
     emailController.dispose();
@@ -20,9 +24,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void loginUser() {
+  Future<void> loginUser() async {
     String email = emailController.text.trim();
-    String password = passwordController.text;
+    String password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -31,16 +35,24 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Login successful")),
-    );
+    final user = await _authService.loginUser(email, password);
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const HomeScreen(),
-      ),
-    );
+    if (user != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login successful")),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HomeScreen(),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Wrong email or password")),
+      );
+    }
   }
 
   @override

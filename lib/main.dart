@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 import 'screens/onboarding_screen.dart';
-void main() {
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp();
+
   runApp(const MyApp());
 }
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
@@ -35,7 +44,6 @@ class WelcomePage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
 
-              // App Title
               const Text(
                 "Welcome to StarShare 🌟",
                 textAlign: TextAlign.center,
@@ -48,7 +56,6 @@ class WelcomePage extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Subtitle
               const Text(
                 "An end-to-end file sharing app.\nFast • Secure • Simple",
                 textAlign: TextAlign.center,
@@ -60,7 +67,6 @@ class WelcomePage extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Icon
               const Icon(
                 Icons.share,
                 size: 100,
@@ -69,7 +75,6 @@ class WelcomePage extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Button
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
@@ -79,6 +84,7 @@ class WelcomePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
+
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -87,6 +93,7 @@ class WelcomePage extends StatelessWidget {
                     ),
                   );
                 },
+
                 child: const Text(
                   "Get Started",
                   style: TextStyle(fontSize: 18),

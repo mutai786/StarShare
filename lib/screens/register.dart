@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login screen.dart';
 import '../user data.dart';
+import '../services/auth_service.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -11,6 +13,13 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   bool showPassword = false;
   bool showConfirmPassword = false;
+
+  final AuthService _authService = AuthService();
+
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+  TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -72,9 +81,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               // Email
               const Text("Email", style: TextStyle(color: Colors.grey)),
-              const TextField(
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
+              TextField(
+                controller: emailController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
                   filled: true,
                   fillColor: Colors.white10,
                   hintText: "Enter email",
@@ -88,6 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // Password
               const Text("Password", style: TextStyle(color: Colors.grey)),
               TextField(
+                controller: passwordController,
                 obscureText: !showPassword,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -115,9 +126,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 15),
 
               // Confirm Password
-              const Text("Confirm Password",
-                  style: TextStyle(color: Colors.grey)),
+              const Text(
+                "Confirm Password",
+                style: TextStyle(color: Colors.grey),
+              ),
               TextField(
+                controller: confirmPasswordController,
                 obscureText: !showConfirmPassword,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
@@ -152,7 +166,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.greenAccent,
                   ),
-                  onPressed: () {
+                  onPressed: () async {
+                    if (passwordController.text !=
+                        confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Passwords do not match"),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final user = await _authService.registerUser(
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
+                    );
+
+                    if (user != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("Account created successfully"),
@@ -165,7 +195,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           builder: (context) => const LoginScreen(),
                         ),
                       );
-                    },// TODO: register logic
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Registration failed"),
+                        ),
+                      );
+                    }
+                  },
                   child: const Text(
                     "Register",
                     style: TextStyle(fontSize: 18),
@@ -179,7 +216,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Center(
                 child: TextButton(
                   onPressed: () {
-                    // TODO: go to login page
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
                   },
                   child: const Text(
                     "Already have an account? Login",
