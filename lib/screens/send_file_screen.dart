@@ -8,7 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'screens/qr_scan_page.dart';
 import '../services/database_service.dart';
 import '../services/app_state.dart';
-
+import '../utils/gesture_handler.dart';
 class SendFileScreen extends StatefulWidget {
   const SendFileScreen({super.key});
 
@@ -203,38 +203,132 @@ class _SendFileScreenState extends State<SendFileScreen> {
         centerTitle: true,
         backgroundColor: Colors.blueAccent,
       ),
-      body: Padding(
+        body: GestureDetector(
+          onVerticalDragEnd: (details) {
+            if (details.primaryVelocity != null &&
+                details.primaryVelocity! > 300) {
+              discoverDevices();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Refreshing nearby devices..."),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            }
+          },
+          child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.blueAccent),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Selected File",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    fileName ?? "No file selected",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+            GestureDetector(
+              onLongPress: () {
+                if (fileName == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Please select a file first."),
                     ),
-                  ),
-                ],
+                  );
+                  return;
+                }
+
+                GestureHandler.showFileOptions(
+                  context,
+                  fileName: fileName!,
+                  onOpen: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Opening $fileName"),
+                      ),
+                    );
+                  },
+                  onShare: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Sharing $fileName"),
+                      ),
+                    );
+                  },
+                  onRename: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Rename $fileName"),
+                      ),
+                    );
+                  },
+                  onDelete: () {
+                    setState(() {
+                      fileName = null;
+                      filePath = null;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("File removed."),
+                      ),
+                    );
+                  },
+                  onDetails: () {
+                    final file = filePath != null ? File(filePath!) : null;
+
+                    final size = file != null && file.existsSync()
+                        ? "${file.lengthSync()} bytes"
+                        : "Unknown";
+
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text("File Details"),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Name: ${fileName ?? 'Unknown'}"),
+                            const SizedBox(height: 8),
+                            Text("Size: $size"),
+                            const SizedBox(height: 8),
+                            Text("Path: ${filePath ?? 'Unknown'}"),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Close"),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.blueAccent),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Selected File",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      fileName ?? "No file selected",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-
             const SizedBox(height: 20),
 
             Row(
@@ -337,7 +431,8 @@ class _SendFileScreenState extends State<SendFileScreen> {
             ),
           ],
         ),
-      ),
+          ),
+        ),
     );
   }
 }

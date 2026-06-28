@@ -7,6 +7,7 @@ import 'history_screen.dart';
 
 import '../services/database_service.dart';
 import '../services/app_state.dart';
+import '../utils/input_validator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int sentCount = 0;
   int receivedCount = 0;
+
+  // Added for search
+  final TextEditingController _searchController = TextEditingController();
+  final InputValidator _validator = const InputValidator();
 
   @override
   void initState() {
@@ -45,6 +50,30 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Search functionality
+  void _searchFiles() {
+    FocusScope.of(context).unfocus();
+
+    final error = _validator.validateSearch(_searchController.text);
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Searching for '${_searchController.text.trim()}'...",
+        ),
+      ),
+    );
+
+    // Search logic can be connected later
+  }
+
   // ✅ FIXED QR HANDLING
   void scanAndSend() async {
     final result = await Navigator.push(
@@ -59,7 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (ip == null || port == null) return;
 
-    // Save for SendFileScreen auto-connect
     AppState.setSelectedDevice(
       ip: ip,
       port: port,
@@ -71,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
       SnackBar(content: Text("Connected to $ip:$port")),
     );
 
-    // OPTIONAL: auto-open send screen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -83,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppState.updateNotifier.removeListener(loadStats);
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -107,13 +135,43 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             const Text(
               "Good Afternoon 👋",
               style: TextStyle(
                 fontSize: 24,
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 25),
+
+            // Added Search Bar
+            TextField(
+              controller: _searchController,
+              style: const TextStyle(color: Colors.white),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _searchFiles(),
+              decoration: InputDecoration(
+                hintText: "Search files...",
+                hintStyle: const TextStyle(color: Colors.white60),
+                filled: true,
+                fillColor: Colors.white10,
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.white70,
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.blueAccent,
+                  ),
+                  onPressed: _searchFiles,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
 
@@ -126,7 +184,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _statCard(Icons.download, "Received", receivedCount.toString()),
+                  child: _statCard(
+                    Icons.download,
+                    "Received",
+                    receivedCount.toString(),
+                  ),
                 ),
               ],
             ),
@@ -147,7 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-
                 _actionButton(
                   context,
                   Icons.upload_file,
@@ -161,7 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
                 _actionButton(
                   context,
                   Icons.download,
@@ -175,14 +235,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
                 _actionButton(
                   context,
                   Icons.qr_code_scanner,
                   "Scan",
                   scanAndSend,
                 ),
-
                 _actionButton(
                   context,
                   Icons.qr_code,
@@ -196,7 +254,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
               ],
             ),
 
