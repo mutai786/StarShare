@@ -38,7 +38,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return ValueListenableBuilder(
       valueListenable: AppState.updateNotifier,
       builder: (context, value, child) {
-        // reload when notifier changes
         loadTransfers();
 
         return Scaffold(
@@ -48,12 +47,69 @@ class _HistoryScreenState extends State<HistoryScreen> {
             centerTitle: true,
             backgroundColor: Colors.blueAccent,
           ),
+
           body: transfers.isEmpty
-              ? const Center(
-            child: Text(
-              "No transfer history yet",
-              style: TextStyle(color: Colors.grey),
-            ),
+              ? ListView(
+            children: [
+              Card(
+                color: Colors.white10,
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: const ListTile(
+                  leading: Icon(
+                    Icons.upload,
+                    color: Colors.greenAccent,
+                  ),
+                  title: Text(
+                    "BIT4107_Notes.pdf",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Sent • 192.168.1.7\n12/07/2026 03:45 PM",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  trailing: Text(
+                    "2 gB",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ),
+              Card(
+                color: Colors.white10,
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: const ListTile(
+                  leading: Icon(
+                    Icons.download,
+                    color: Colors.blueAccent,
+                  ),
+                  title: Text(
+                    "Project_Report.docx",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Received • 192.168.1.15\n12/07/2026 04:10 PM",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  trailing: Text(
+                    "1.2 MB",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  "(2 files).",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
           )
               : ListView.builder(
             itemCount: transfers.length,
@@ -80,7 +136,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     style: const TextStyle(color: Colors.white),
                   ),
                   subtitle: Text(
-                    "${item['direction']} • ${item['deviceIp']}",
+                    "${item['direction']} • ${item['deviceIp']}\n${item['timestamp']}",
                     style: const TextStyle(color: Colors.grey),
                   ),
                   trailing: Text(
@@ -91,6 +147,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               );
             },
           ),
+
           floatingActionButton: FloatingActionButton(
             backgroundColor: Colors.blueAccent,
             onPressed: loadTransfers,

@@ -4,7 +4,7 @@ import 'package:starshare/screens/qr_scanner_screen.dart';
 import 'send_file_screen.dart';
 import 'receive_file_screen.dart';
 import 'history_screen.dart';
-
+import '../services/location_service.dart';
 import '../services/database_service.dart';
 import '../services/app_state.dart';
 import '../utils/input_validator.dart';
@@ -19,7 +19,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int sentCount = 0;
   int receivedCount = 0;
+  String latitude = "Not Available";
+  String longitude = "Not Available";
 
+  final LocationService _locationService = LocationService();
   // Added for search
   final TextEditingController _searchController = TextEditingController();
   final InputValidator _validator = const InputValidator();
@@ -106,7 +109,30 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+  Future<void> getLocation() async {
+    try {
+      final position = await _locationService.getCurrentLocation();
 
+      if (position == null) return;
+
+      setState(() {
+        latitude = position.latitude.toStringAsFixed(6);
+        longitude = position.longitude.toStringAsFixed(6);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Location retrieved successfully."),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+        ),
+      );
+    }
+  }
   @override
   void dispose() {
     AppState.updateNotifier.removeListener(loadStats);
@@ -256,7 +282,44 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 20),
 
+            _actionButton(
+              context,
+              Icons.location_on,
+              "Location",
+              getLocation,
+            ),
+
+            const SizedBox(height: 20),
+
+            Card(
+              color: Colors.white10,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Current Location",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Latitude: $latitude",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      "Longitude: $longitude",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
 
             _actionButton(

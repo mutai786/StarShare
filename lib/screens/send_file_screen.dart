@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -159,7 +159,9 @@ class _SendFileScreenState extends State<SendFileScreen> {
           'fileSize': bytes.length,
           'direction': 'Sent',
           'deviceIp': selectedIp,
-          'timestamp': DateTime.now().toString(),
+          'timestamp': DateFormat(
+            'dd/MM/yyyy  hh:mm a',
+          ).format(DateTime.now()),
         },
       );
 
