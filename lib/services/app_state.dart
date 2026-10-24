@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 
 class AppState {
@@ -11,6 +13,13 @@ class AppState {
   /// QR-selected target device (receiver IP)
   static String? selectedIp;
   static int selectedPort = 5000;
+
+  /// From the scanned QR code: the receiver's one-time public key and secret
+  /// token. Both are null when the device was NOT chosen by scanning a QR
+  /// code (for example picked from "Find nearby"), which means its identity
+  /// is not verified and the users must compare the 6-digit code.
+  static Uint8List? selectedPublicKey;
+  static Uint8List? selectedToken;
 
   /// Last successful connection
   static String? lastConnectedIp;
@@ -37,12 +46,18 @@ class AppState {
   /// ---------------------------
   /// QR / TARGET DEVICE
   /// ---------------------------
+  /// Always replaces the key and token too, so a key from an earlier scan
+  /// can never be paired with a different device's IP address.
   static void setSelectedDevice({
     required String ip,
     int port = 5000,
+    Uint8List? publicKey,
+    Uint8List? token,
   }) {
     selectedIp = ip;
     selectedPort = port;
+    selectedPublicKey = publicKey;
+    selectedToken = token;
   }
 
   /// ---------------------------
@@ -60,5 +75,7 @@ class AppState {
   static void clearSelectedDevice() {
     selectedIp = null;
     selectedPort = 5000;
+    selectedPublicKey = null;
+    selectedToken = null;
   }
 }

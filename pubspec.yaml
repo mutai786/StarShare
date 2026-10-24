@@ -11,7 +11,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   intl: ^0.20.2
   firebase_core: ^4.0.0
   firebase_auth: ^6.0.1
@@ -26,9 +25,11 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  cryptography: ^2.7.0
   mobile_scanner: ^5.2.3
   permission_handler: ^11.3.1
   qr_flutter: ^4.1.0
+
 
 dev_dependencies:
   flutter_test:
