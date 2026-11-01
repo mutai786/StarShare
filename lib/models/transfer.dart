@@ -6,6 +6,10 @@ class Transfer {
   final String deviceIp;
   final String timestamp;
 
+  /// Where the received file was saved. Null for sent files and for entries
+  /// created before this field existed.
+  final String? filePath;
+
   Transfer({
     this.id,
     required this.fileName,
@@ -13,6 +17,7 @@ class Transfer {
     required this.direction,
     required this.deviceIp,
     required this.timestamp,
+    this.filePath,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +28,7 @@ class Transfer {
       'direction': direction,
       'deviceIp': deviceIp,
       'timestamp': timestamp,
+      'filePath': filePath,
     };
   }
 }

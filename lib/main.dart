@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:media_store_plus/media_store_plus.dart';
 
 import 'screens/onboarding_screen.dart';
 
@@ -7,6 +10,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp();
+
+  if (Platform.isAndroid) {
+    await MediaStore.ensureInitialized();
+    MediaStore.appFolder = 'StarShare';
+  }
 
   runApp(const MyApp());
 }

@@ -164,6 +164,22 @@ void main() {
     expect(name, 'photo.jpg');
   });
 
+  test('sub keys differ per label and match on both sides', () async {
+    final pair = await newPair();
+    final a = await senderSide(pair, token: token);
+    final b = await receiverSide(pair, token: token);
+
+    final aFile0 = await NearbyKeyAgreement.subKey(a.fileKey, 'file 0');
+    final aFile1 = await NearbyKeyAgreement.subKey(a.fileKey, 'file 1');
+    final bFile0 = await NearbyKeyAgreement.subKey(b.fileKey, 'file 0');
+
+    expect(await aFile0.extractBytes(), await bFile0.extractBytes());
+    expect(await aFile0.extractBytes(), isNot(await aFile1.extractBytes()));
+    expect(await aFile0.extractBytes(),
+        isNot(await a.fileKey.extractBytes()));
+    expect((await aFile0.extractBytes()).length, 32);
+  });
+
   test('an eavesdropper with the wrong key cannot decrypt', () async {
     final pair = await newPair();
     final sender = await senderSide(pair, token: token);

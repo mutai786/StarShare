@@ -2,12 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:starshare/screens/qr_generator_screen.dart';
-import 'package:starshare/screens/qr_scanner_screen.dart';
+import 'screens/qr_scan_page.dart';
 import 'send_file_screen.dart';
 import 'receive_file_screen.dart';
 import 'history_screen.dart';
+import 'notifications_screen.dart';
 import '../services/database_service.dart';
+import '../services/notification_service.dart';
 import '../utils/input_validator.dart';
 
 /// Colors used on this screen. Move these into your app's ThemeData
@@ -34,6 +38,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _sentCount = 0;
   int _receivedCount = 0;
+  int _unread = 0;
   List<_Transfer> _recent = const [];
   String? _localIp;
   bool _loading = true;
@@ -67,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final rows = await db.rawQuery(
         'SELECT * FROM transfers ORDER BY rowid DESC LIMIT 50',
       );
+      final unread = await NotificationService.unreadCount();
       final ip = await _findLocalIp();
 
       var sent = 0;
@@ -81,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _sentCount = sent;
         _receivedCount = received;
+        _unread = unread;
         _recent = rows.map(_Transfer.fromRow).toList();
         _localIp = ip;
         _loading = false;
@@ -134,39 +141,26 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) _load();
   }
 
-  Future<void> _scan() async {
-    final result = await Navigator.of(context).push<dynamic>(
-      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
-    );
+  /// Opens the scanner. After a valid scan it stores the receiver's key and
+  /// token and moves on to the Send screen by itself.
+  void _scan() => _open(const QRScanPage());
 
-    if (!mounted || result == null) return;
+  Future<void> _openTransfer(_Transfer transfer) async {
+    final path = transfer.path;
 
-    // Treat the scanned data as untrusted input.
-    if (result is! Map) {
-      HapticFeedback.heavyImpact();
-      _showMessage('This QR code is not a valid StarShare code.');
+    if (path == null || path.isEmpty) {
+      _showMessage('This entry has no saved file location.');
+      return;
+    }
+    if (!await File(path).exists()) {
+      _showMessage('The file is no longer there. It may have been moved or deleted.');
       return;
     }
 
-    final rawIp = result['ip'];
-    final port = result['port'];
-    final String? ip = rawIp is String ? rawIp : null;
-    final portNumber = int.tryParse('$port');
-
-    if (ip == null ||
-        InternetAddress.tryParse(ip) == null ||
-        portNumber == null ||
-        portNumber < 1 ||
-        portNumber > 65535) {
-      HapticFeedback.heavyImpact();
-      _showMessage('This QR code is not a valid StarShare code.');
-      return;
+    final result = await OpenFilex.open(path);
+    if (result.type != ResultType.done) {
+      _showMessage('Could not open the file: ${result.message}');
     }
-
-    // TODO: hand `ip` and `port` to your send flow once it accepts them
-    // (for example through a constructor parameter).
-    HapticFeedback.mediumImpact();
-    _showMessage('QR code scanned: $ip:$port');
   }
 
   void _submitSearch() {
@@ -302,18 +296,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Spacer(),
             IconButton(
-              tooltip: 'Notifications',
+              tooltip: _unread > 0
+                  ? 'Notifications, $_unread new'
+                  : 'Notifications',
               style: IconButton.styleFrom(
                 backgroundColor: _Palette.surface,
                 foregroundColor: _Palette.text,
                 minimumSize: const Size(48, 48),
                 side: const BorderSide(color: _Palette.border),
               ),
-              icon: const Icon(Icons.notifications_none_rounded),
-              // TODO: open a notifications screen once you have one.
+              icon: Badge(
+                isLabelVisible: _unread > 0,
+                label: Text(_unread > 99 ? '99+' : '$_unread'),
+                child: const Icon(Icons.notifications_none_rounded),
+              ),
               onPressed: () {
                 HapticFeedback.selectionClick();
-                _showMessage('No new notifications');
+                _open(const NotificationsScreen());
               },
             ),
           ],
@@ -494,7 +493,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           for (var i = 0; i < transfers.length; i++) ...[
             if (i > 0) const Divider(height: 1, color: _Palette.border),
-            _TransferRow(transfer: transfers[i]),
+            _TransferRow(
+              transfer: transfers[i],
+              onTap: () => _openTransfer(transfers[i]),
+            ),
           ],
         ],
       );
@@ -782,9 +784,10 @@ class _StatTile extends StatelessWidget {
 }
 
 class _TransferRow extends StatelessWidget {
-  const _TransferRow({required this.transfer});
+  const _TransferRow({required this.transfer, required this.onTap});
 
   final _Transfer transfer;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -793,46 +796,49 @@ class _TransferRow extends StatelessWidget {
       if (transfer.size != null) transfer.size!,
     ].join(' · ');
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          _IconBox(
-            icon: transfer.sent
-                ? Icons.north_east_rounded
-                : Icons.south_west_rounded,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transfer.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _Palette.text,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  meta,
-                  style: const TextStyle(color: _Palette.muted, fontSize: 13),
-                ),
-              ],
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            _IconBox(
+              icon: transfer.sent
+                  ? Icons.north_east_rounded
+                  : Icons.south_west_rounded,
             ),
-          ),
-          if (transfer.when != null) ...[
             const SizedBox(width: 12),
-            Text(
-              transfer.when!,
-              style: const TextStyle(color: _Palette.muted, fontSize: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transfer.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _Palette.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    style: const TextStyle(color: _Palette.muted, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
+            if (transfer.when != null) ...[
+              const SizedBox(width: 12),
+              Text(
+                transfer.when!,
+                style: const TextStyle(color: _Palette.muted, fontSize: 13),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -909,6 +915,7 @@ class _Transfer {
     required this.sent,
     this.size,
     this.when,
+    this.path,
   });
 
   final String name;
@@ -916,35 +923,32 @@ class _Transfer {
   final String? size;
   final String? when;
 
-  /// Reads one row of the `transfers` table.
-  ///
-  /// ASSUMPTION: I only know the `direction` column from your code. The
-  /// other column names below are guesses, so change the lists to match
-  /// your real schema.
-  factory _Transfer.fromRow(Map<String, Object?> row) {
-    Object? pick(List<String> keys) {
-      for (final key in keys) {
-        final value = row[key];
-        if (value != null) return value;
-      }
-      return null;
-    }
+  /// Where the received file was saved; null for sent files and old rows.
+  final String? path;
 
-    final rawSize = pick(const ['size', 'file_size', 'fileSize']);
-    final rawTime = pick(const ['timestamp', 'created_at', 'date', 'time']);
+  /// Reads one row of the `transfers` table
+  /// (id, fileName, fileSize, direction, deviceIp, timestamp, filePath).
+  factory _Transfer.fromRow(Map<String, Object?> row) {
+    final rawSize = row['fileSize'];
+    final rawTime = row['timestamp'];
 
     DateTime? time;
-    if (rawTime is int) {
-      time = DateTime.fromMillisecondsSinceEpoch(rawTime);
-    } else if (rawTime is String) {
-      time = DateTime.tryParse(rawTime);
+    if (rawTime is String) {
+      try {
+        // The format the Send and Receive screens write.
+        time = DateFormat('dd/MM/yyyy  hh:mm a').parse(rawTime);
+      } catch (_) {
+        // Older rows were saved as ISO text.
+        time = DateTime.tryParse(rawTime);
+      }
     }
 
     return _Transfer(
-      name: '${pick(const ['file_name', 'fileName', 'name']) ?? 'Unknown file'}',
+      name: '${row['fileName'] ?? 'Unknown file'}',
       sent: row['direction'] == 'Sent',
-      size: rawSize is int ? _formatBytes(rawSize) : rawSize?.toString(),
+      size: rawSize is int ? _formatBytes(rawSize) : null,
       when: time == null ? null : _formatWhen(time),
+      path: row['filePath'] as String?,
     );
   }
 }

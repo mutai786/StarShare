@@ -51,6 +51,16 @@ class NearbyKeyAgreement {
     return Uint8List.fromList(publicKey.bytes);
   }
 
+  /// Derives an independent 256-bit key from a session key for one purpose,
+  /// for example one file inside a batch. Every file therefore gets its own
+  /// key, so no two streams ever share a key and nonce.
+  static Future<SecretKey> subKey(SecretKey sessionKey, String label) {
+    return _hkdfKey.deriveKey(
+      secretKey: sessionKey,
+      info: utf8.encode(label),
+    );
+  }
+
   /// Both sides pass the SAME [senderPublicKey], [receiverPublicKey] and
   /// [token]; [localKeyPair] and [remotePublicKey] are each side's own view.
   static Future<NearbySession> deriveSession({
